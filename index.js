@@ -27,18 +27,25 @@ async function run() {
     const db = client.db("study-nook");
     const roomsCollection = db.collection("roomsCollection");
 
+    app.get("/rooms", async (req, res) => {
+      const cursor = roomsCollection.find().sort({ _id: -1 }).toArray();
+      const result = await cursor;
+      res.send(result);
+    });
+
     app.get("/available-study-rooms", async (req, res) => {
-      const cursor = roomsCollection.find().sort({ _id: -1 }).limit(6).toArray();
+      const cursor = roomsCollection
+        .find()
+        .sort({ _id: -1 })
+        .limit(6)
+        .toArray();
       const result = await cursor;
       res.send(result);
     });
 
     await client.db("admin").command({ ping: 1 });
-    console.log(
-      "You successfully connected to MongoDB!",
-    );
+    console.log("You successfully connected to MongoDB!");
   } finally {
-    
   }
 }
 run().catch(console.dir);
