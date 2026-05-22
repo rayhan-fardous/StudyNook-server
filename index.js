@@ -26,6 +26,7 @@ async function run() {
     await client.connect();
     const db = client.db("study-nook");
     const roomsCollection = db.collection("roomsCollection");
+    const bookingsCollection = db.collection("bookingsCollection");
 
     app.post("/rooms", async (req, res) => {
       const newData = req.body;
@@ -63,7 +64,6 @@ async function run() {
           }
         }
 
-        console.log("User searched for =>", search);
         const result = await roomsCollection
           .find(query)
           .sort({ _id: -1 })
@@ -103,8 +103,6 @@ async function run() {
     app.patch("/rooms/:id", async (req, res) => {
       const { id } = req.params;
       const updatedData = req.body;
-      console.log("ID received:", id);
-      console.log("Data to update:", updatedData);
       const result = await roomsCollection.updateOne(
         { _id: new ObjectId(id) },
         { $set: updatedData },
@@ -118,6 +116,28 @@ async function run() {
         _id: new ObjectId(id),
       };
       const result = await roomsCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    app.post("/bookings", async (req, res) => {
+      const newBooking = req.body;
+      console.log("newBooking =>", newBooking);
+      const result = await bookingsCollection.insertOne(newBooking);
+      res.send(result);
+    });
+
+    app.get("/bookings", async (req, res) => {
+      const result = await bookingsCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.patch("/bookings/:id", async (req, res) => {
+      const { id } = req.params;
+      const updateStatus = req.body;
+      const result = await bookingsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updateStatus },
+      );
       res.send(result);
     });
 
