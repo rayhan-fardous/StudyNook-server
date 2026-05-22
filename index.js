@@ -3,6 +3,7 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 const port = process.env.PORT || 5000;
 
 app.use(cors());
@@ -21,6 +22,28 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+
+const JWKS = createRemoteJWKSet(
+  new URL(`${process.env.CLIENT_URL}/api/auth/jwks`),
+);
+
+const verifyToken = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+  const token = authHeader.split(" ")[1];
+  if (!token) {
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+  try {
+    const { payload } = await jwtVerify(token, JWKS);
+    next();
+  } catch (error) {
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+};
+
 async function run() {
   try {
     await client.connect();
@@ -49,7 +72,7 @@ async function run() {
 
           query.amenities = {
             $all: amenitiesArray,
-          }
+          };
         }
 
         if (minPrice || maxPrice) {
@@ -121,13 +144,35 @@ async function run() {
 
     app.post("/bookings", async (req, res) => {
       const newBooking = req.body;
-      console.log("newBooking =>", newBooking);
+      const { roomId, date, startTime, endTime } = newBooking;
+
+      const query = {
+        roomId: roomId,
+        date: date,
+        $or: [
+          {
+            startTime: { $lt: endTime },
+            endTime: { $gt: startTime },
+          },
+        ],
+      };
+
+      const existingBooking = await bookingsCollection.findOne(query);
+
+      if (existingBooking) {
+        return res.status(400).send({
+          message: "Sorry, This room already booked!",
+        });
+      }
       const result = await bookingsCollection.insertOne(newBooking);
       res.send(result);
     });
 
     app.get("/bookings", async (req, res) => {
-      const result = await bookingsCollection.find().toArray();
+      const result = await bookingsCollection
+        .find()
+        .sort({ _id: -1 })
+        .toArray();
       res.send(result);
     });
 
