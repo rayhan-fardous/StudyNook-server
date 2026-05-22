@@ -27,6 +27,12 @@ async function run() {
     const db = client.db("study-nook");
     const roomsCollection = db.collection("roomsCollection");
 
+    app.post("/rooms", async (req, res) => {
+      const newData = req.body;
+      const result = await roomsCollection.insertOne(newData);
+      res.send(result);
+    });
+
     app.get("/rooms", async (req, res) => {
       try {
         const { search, amenities, minPrice, maxPrice } = req.query;
